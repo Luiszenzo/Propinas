@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: propinas-app
+    env: static
+    buildCommand: ""
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: true
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
