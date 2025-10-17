@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Reparto de Propinas</title>
+    <!-- Agregar Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="login-section" class="login-container">
+        <div class="login-form">
+            <h2>Iniciar Sesión</h2>
+            <div class="form-group">
+                <label for="username">Usuario:</label>
+                <input type="text" id="username" placeholder="Ingrese su usuario">
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" placeholder="Ingrese su contraseña">
+            </div>
+            <div class="error-message" id="login-error"></div>
+            <button id="login-btn">Iniciar Sesión</button>
+        </div>
+    </div>
+
+    <!-- Main App Content - Hidden until login -->
+    <div id="app-content" class="container" style="display: none;">
+        <div class="user-info">
+            <span id="user-display">Bienvenido/a: <strong id="current-user"></strong></span>
+            <button id="logout-btn">Cerrar Sesión</button>
+        </div>
+        
+        <h1>Sistema de Reparto de Propinas</h1>
+        
+        <div class="ticket-form">
+            <h2>Agregar Nuevo Ticket</h2>
+            <div class="form-group">
+                <label for="ticket-number">Número de Ticket (Opcional):</label>
+                <input type="text" id="ticket-number" placeholder="Ingrese el número de ticket">
+            </div>
+            
+            <!-- Add this inside the form-group section, after ticket number and before ticket amount -->
+            <div class="form-group">
+                <label for="ticket-date">Fecha del Ticket:</label>
+                <input type="date" id="ticket-date" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="ticket-amount">Monto del Ticket ($):</label>
+                <input type="number" id="ticket-amount" min="0" step="0.01" placeholder="Ingrese el monto">
+            </div>
+            
+            <div class="form-group">
+                <label>Empleados que participan:</label>
+                <div class="employees-grid" id="employees-selection">
+                    <!-- Los empleados se cargarán desde JavaScript -->
+                </div>
+            </div>
+            
+            <button id="add-ticket-btn">Agregar Ticket</button>
+        </div>
+        
+        <div class="tickets-summary">
+            <h2>Tickets Agregados</h2>
+            <div id="tickets-list">
+                <!-- Aquí se mostrarán los tickets agregados -->
+                <p class="no-tickets">No hay tickets agregados</p>
+            </div>
+        </div>
+        
+        <div class="totals-summary">
+            <h2>Resumen de Propinas</h2>
+            <div id="totals-list">
+                <!-- Aquí se mostrará el resumen de propinas por empleado -->
+            </div>
+        </div>
+        
+        <!-- Add this after the totals-summary div -->
+        <div class="reports-section">
+            <h2>Generar Reportes</h2>
+            <div class="report-options">
+                <div class="report-option">
+                    <h3>Reporte Diario</h3>
+                    <div class="form-group">
+                        <label for="daily-report-date">Seleccionar Fecha:</label>
+                        <input type="date" id="daily-report-date">
+                    </div>
+                    <button id="generate-daily-report" class="report-btn">Generar Reporte Diario</button>
+                </div>
+                
+                <div class="report-option">
+                    <h3>Reporte Semanal</h3>
+                    <div class="form-group">
+                        <label for="weekly-report-date">Seleccionar Semana:</label>
+                        <input type="week" id="weekly-report-date">
+                    </div>
+                    <button id="generate-weekly-report" class="report-btn">Generar Reporte Semanal</button>
+                </div>
+                
+                <div class="report-option">
+                    <h3>Reporte Mensual</h3>
+                    <div class="form-group">
+                        <label for="monthly-report-date">Seleccionar Mes:</label>
+                        <input type="month" id="monthly-report-date">
+                    </div>
+                    <button id="generate-monthly-report" class="report-btn">Generar Reporte Mensual</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="script.js"></script>
+    
+    <!-- Add this at the end of your body tag, before the script tags -->
+    <div id="confirm-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Confirmar eliminación</h3>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p>¿Estás seguro de que deseas eliminar este ticket?</p>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-delete" class="btn-secondary">Cancelar</button>
+          <button id="confirm-delete" class="btn-danger">Eliminar</button>
+        </div>
+      </div>
+    </div>
+</body>
+</html>
