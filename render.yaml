@@ -9,3 +9,14 @@ services:
       - path: /*
         name: Cache-Control
         value: no-cache
+  
+  - type: web
+    name: propinas-api
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false

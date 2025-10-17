@@ -953,3 +953,70 @@ logoutBtn.addEventListener('click', () => {
 
 // Verificar sesión al cargar la página
 document.addEventListener('DOMContentLoaded', checkSession);
+
+// Replace your localStorage code with API calls
+
+// API URL - update this with your actual Render API URL when deployed
+const API_URL = 'https://propinas-api.onrender.com/api';
+
+// Load data from server
+async function loadData() {
+  try {
+    const response = await fetch(`${API_URL}/data`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error loading data:', error);
+    return { tickets: [], employees: [] };
+  }
+}
+
+// Save ticket to server
+async function saveTicket(ticket) {
+  try {
+    const response = await fetch(`${API_URL}/tickets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(ticket),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving ticket:', error);
+    return null;
+  }
+}
+
+// Delete ticket from server
+async function deleteTicket(ticketId) {
+  try {
+    await fetch(`${API_URL}/tickets/${ticketId}`, {
+      method: 'DELETE',
+    });
+    return true;
+  } catch (error) {
+    console.error('Error deleting ticket:', error);
+    return false;
+  }
+}
+
+// Update employees on server
+async function updateEmployees(employees) {
+  try {
+    const response = await fetch(`${API_URL}/employees`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(employees),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating employees:', error);
+    return null;
+  }
+}
+
+// Then modify your existing functions to use these API functions
+// instead of localStorage operations
