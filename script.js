@@ -11,25 +11,31 @@ const employees = [
     "Lulu"
 ];
 
-// Almacenamiento de tickets - cargar desde localStorage si existe
-let tickets = JSON.parse(localStorage.getItem('tickets')) || [];
-let employeeTotals = JSON.parse(localStorage.getItem('employeeTotals')) || {};
+// Variables para almacenar datos
+let tickets = [];
+let employeeTotals = {};
 
-// Inicializar totales de empleados si no existen en localStorage
-if (Object.keys(employeeTotals).length === 0) {
+// Función para inicializar la aplicación
+async function initApp() {
+    // Cargar datos desde el servidor
+    const data = await loadData();
+    tickets = data.tickets || [];
+    
+    // Inicializar totales de empleados
+    employeeTotals = {};
     employees.forEach(employee => {
         employeeTotals[employee] = 0;
     });
-}
-
-// Función para guardar datos en localStorage
-function saveToLocalStorage() {
-    localStorage.setItem('tickets', JSON.stringify(tickets));
-    localStorage.setItem('employeeTotals', JSON.stringify(employeeTotals));
-}
-
-// Función para inicializar la aplicación
-function initApp() {
+    
+    // Calcular totales basados en los tickets cargados
+    if (tickets.length > 0) {
+        tickets.forEach(ticket => {
+            ticket.employees.forEach(employee => {
+                employeeTotals[employee] += ticket.tipPerEmployee;
+            });
+        });
+    }
+    
     // Cargar la lista de empleados en el formulario
     const employeesContainer = document.getElementById('employees-selection');
     
@@ -87,7 +93,7 @@ function initApp() {
 }
 
 // Función para agregar un nuevo ticket
-function addTicket() {
+async function addTicket() {
     const ticketAmount = parseFloat(document.getElementById('ticket-amount').value);
     const ticketNumber = document.getElementById('ticket-number').value.trim();
     
@@ -145,160 +151,38 @@ function addTicket() {
         date: ticketDate,
         employees: selectedEmployees,
         tipPerEmployee: tipPerEmployee,
-        createdBy: currentUser  // Add the creator information
+        createdBy: currentUser
     };
     
-    // Agregar el ticket a la lista
-    tickets.push(ticket);
+    // Guardar el ticket en el servidor
+    const savedTicket = await saveTicket(ticket);
     
-    // Actualizar los totales por empleado
-    selectedEmployees.forEach(employee => {
-        employeeTotals[employee] += tipPerEmployee;
-    });
-    
-    // Guardar en localStorage
-    saveToLocalStorage();
-    
-    // Actualizar la interfaz
-    renderTickets();
-    renderTotals();
-    
-    // Limpiar el formulario (add this line to reset the date)
-    document.getElementById('ticket-date').value = new Date().toISOString().split('T')[0]; // Set to today
-    document.getElementById('ticket-number').value = '';
-    document.getElementById('ticket-amount').value = '';
-    employees.forEach(employee => {
-        document.getElementById(`employee-${employee}`).checked = false;
-    });
-}
-
-// Función para mostrar los tickets agregados
-function renderTickets() {
-    const ticketsList = document.getElementById('tickets-list');
-    
-    // Limpiar la lista actual
-    ticketsList.innerHTML = '';
-    
-    if (tickets.length === 0) {
-        ticketsList.innerHTML = '<p class="no-tickets">No hay tickets agregados</p>';
-        return;
+    if (savedTicket) {
+        // Agregar el ticket a la lista local
+        tickets.push(savedTicket);
+        
+        // Actualizar los totales por empleado
+        selectedEmployees.forEach(employee => {
+            employeeTotals[employee] += tipPerEmployee;
+        });
+        
+        // Actualizar la interfaz
+        renderTickets();
+        renderTotals();
+        
+        // Limpiar el formulario
+        document.getElementById('ticket-date').value = new Date().toISOString().split('T')[0]; // Set to today
+        document.getElementById('ticket-number').value = '';
+        document.getElementById('ticket-amount').value = '';
+        
+        // Deseleccionar empleados
+        document.querySelectorAll('.employee-btn[data-selected="true"]').forEach(btn => {
+            btn.dataset.selected = 'false';
+            btn.classList.remove('selected');
+        });
+    } else {
+        alert('Error al guardar el ticket. Por favor, intente nuevamente.');
     }
-    
-    // Agrupar tickets por fecha
-    const ticketsByDate = {};
-    tickets.forEach(ticket => {
-        if (!ticketsByDate[ticket.date]) {
-            ticketsByDate[ticket.date] = [];
-        }
-        ticketsByDate[ticket.date].push(ticket);
-    });
-    
-    // Ordenar fechas (más recientes primero)
-    const sortedDates = Object.keys(ticketsByDate).sort().reverse();
-    
-    // Mostrar tickets agrupados por fecha
-    sortedDates.forEach(date => {
-        const dateTickets = ticketsByDate[date];
-        const dateTotal = dateTickets.reduce((sum, ticket) => sum + ticket.amount, 0);
-        
-        // Crear grupo de fecha
-        const dateGroup = document.createElement('div');
-        dateGroup.className = 'date-group';
-        
-        // Crear encabezado de fecha
-        const dateHeader = document.createElement('div');
-        dateHeader.className = 'date-header';
-        
-        // Formatear fecha para mostrar
-        const formattedDate = new Date(date).toLocaleDateString('es-ES', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-        
-        // Fix date formatting to ensure correct display
-        let displayDate;
-        try {
-            // Create a new date object with the date string
-            const dateObj = new Date(date + 'T12:00:00'); // Add noon time to avoid timezone issues
-            displayDate = dateObj.toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        } catch (e) {
-            // Fallback if there's an error
-            displayDate = date;
-        }
-        
-        dateHeader.innerHTML = `
-            <span>${displayDate}</span>
-            <span class="date-total">Total: $${dateTotal.toFixed(2)}</span>
-        `;
-        
-        // Contenedor para tickets de esta fecha
-        const dateTicketsContainer = document.createElement('div');
-        dateTicketsContainer.className = 'date-tickets';
-        
-        // Agregar tickets de esta fecha
-        dateTickets.forEach(ticket => {
-            const ticketCard = document.createElement('div');
-            ticketCard.className = 'ticket-card';
-            
-            const ticketHeader = document.createElement('div');
-            ticketHeader.className = 'ticket-header';
-            
-            const ticketAmount = document.createElement('div');
-            ticketAmount.className = 'ticket-amount';
-            
-            // Add the ticket number to the display if available
-            if (ticket.number) {
-                ticketAmount.textContent = `Ticket #${ticket.number}: $${ticket.amount.toFixed(2)} (${ticket.employees.length} empleados - $${ticket.tipPerEmployee.toFixed(2)} c/u)`;
-            } else {
-                ticketAmount.textContent = `$${ticket.amount.toFixed(2)} (${ticket.employees.length} empleados - $${ticket.tipPerEmployee.toFixed(2)} c/u)`;
-            }
-            
-            // Agregar botón de eliminar
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-ticket-btn';
-            deleteBtn.innerHTML = '&times;';
-            deleteBtn.title = 'Eliminar ticket';
-            deleteBtn.addEventListener('click', () => deleteTicket(ticket.id));
-            
-            ticketHeader.appendChild(ticketAmount);
-            ticketHeader.appendChild(deleteBtn);
-            
-            ticketCard.appendChild(ticketHeader);
-            
-            // Add creator information if available
-            if (ticket.createdBy) {
-                const creatorInfo = document.createElement('div');
-                creatorInfo.className = 'ticket-creator';
-                creatorInfo.textContent = `Creado por: ${ticket.createdBy}`;
-                ticketCard.appendChild(creatorInfo);
-            }
-            
-            const ticketEmployees = document.createElement('div');
-            ticketEmployees.className = 'ticket-employees';
-            
-            ticket.employees.forEach(employee => {
-                const employeeTag = document.createElement('span');
-                employeeTag.className = 'employee-tag';
-                employeeTag.textContent = employee;
-                ticketEmployees.appendChild(employeeTag);
-            });
-            
-            ticketCard.appendChild(ticketHeader);
-            ticketCard.appendChild(ticketEmployees);
-            dateTicketsContainer.appendChild(ticketCard);
-        });
-        
-        dateGroup.appendChild(dateHeader);
-        dateGroup.appendChild(dateTicketsContainer);
-        ticketsList.appendChild(dateGroup);
-    });
 }
 
 // Función para eliminar un ticket
@@ -321,38 +205,42 @@ function deleteTicket(ticketId) {
     };
     
     // Configurar el botón de confirmar
-    document.getElementById('confirm-delete').onclick = function() {
+    document.getElementById('confirm-delete').onclick = async function() {
         // Ocultar el modal
         modal.style.display = 'none';
         
         // Obtener el ID del ticket a eliminar
         const ticketIdToDelete = parseInt(modal.dataset.ticketId);
         
-        // Encontrar el ticket a eliminar
-        const ticketIndex = tickets.findIndex(ticket => ticket.id === ticketIdToDelete);
+        // Eliminar el ticket del servidor
+        const success = await deleteTicket(ticketIdToDelete);
         
-        if (ticketIndex !== -1) {
-            const ticket = tickets[ticketIndex];
+        if (success) {
+            // Encontrar el ticket a eliminar
+            const ticketIndex = tickets.findIndex(ticket => ticket.id === ticketIdToDelete);
             
-            // Restar las propinas de los empleados afectados
-            ticket.employees.forEach(employee => {
-                employeeTotals[employee] -= ticket.tipPerEmployee;
+            if (ticketIndex !== -1) {
+                const ticket = tickets[ticketIndex];
                 
-                // Asegurarse de que no haya valores negativos por errores de redondeo
-                if (employeeTotals[employee] < 0.01) {
-                    employeeTotals[employee] = 0;
-                }
-            });
-            
-            // Eliminar el ticket del array
-            tickets.splice(ticketIndex, 1);
-            
-            // Guardar cambios en localStorage
-            saveToLocalStorage();
-            
-            // Actualizar la interfaz
-            renderTickets();
-            renderTotals();
+                // Restar las propinas de los empleados afectados
+                ticket.employees.forEach(employee => {
+                    employeeTotals[employee] -= ticket.tipPerEmployee;
+                    
+                    // Asegurarse de que no haya valores negativos por errores de redondeo
+                    if (employeeTotals[employee] < 0.01) {
+                        employeeTotals[employee] = 0;
+                    }
+                });
+                
+                // Eliminar el ticket del array local
+                tickets.splice(ticketIndex, 1);
+                
+                // Actualizar la interfaz
+                renderTickets();
+                renderTotals();
+            }
+        } else {
+            alert('Error al eliminar el ticket. Por favor, intente nuevamente.');
         }
     };
     
@@ -364,59 +252,43 @@ function deleteTicket(ticketId) {
     };
 }
 
-// Función para mostrar los totales por empleado
-function renderTotals() {
-    const totalsList = document.getElementById('totals-list');
+// Función para verificar si hay actualizaciones en el servidor
+async function checkForUpdates() {
+    const data = await loadData();
     
-    // Limpiar la lista actual
-    totalsList.innerHTML = '';
-    
-    // Ordenar empleados por monto (de mayor a menor)
-    const sortedEmployees = Object.keys(employeeTotals).sort((a, b) => {
-        return employeeTotals[b] - employeeTotals[a];
-    });
-    
-    // Agregar cada empleado con su total
-    sortedEmployees.forEach(employee => {
-        if (employeeTotals[employee] > 0) {
-            const employeeDiv = document.createElement('div');
-            employeeDiv.className = 'employee-total';
+    if (data && data.tickets) {
+        // Verificar si hay cambios en los tickets
+        if (JSON.stringify(data.tickets) !== JSON.stringify(tickets)) {
+            // Actualizar tickets locales
+            tickets = data.tickets;
             
-            const employeeName = document.createElement('div');
-            employeeName.className = 'employee-name';
-            employeeName.textContent = employee;
+            // Recalcular totales
+            employeeTotals = {};
+            employees.forEach(employee => {
+                employeeTotals[employee] = 0;
+            });
             
-            const employeeAmount = document.createElement('div');
-            employeeAmount.className = 'employee-amount';
-            employeeAmount.textContent = `$${employeeTotals[employee].toFixed(2)}`;
+            tickets.forEach(ticket => {
+                ticket.employees.forEach(employee => {
+                    employeeTotals[employee] += ticket.tipPerEmployee;
+                });
+            });
             
-            employeeDiv.appendChild(employeeName);
-            employeeDiv.appendChild(employeeAmount);
-            totalsList.appendChild(employeeDiv);
+            // Actualizar la interfaz
+            renderTickets();
+            renderTotals();
         }
-    });
+    }
+}
+
+// Verificar sesión y cargar datos al iniciar
+document.addEventListener('DOMContentLoaded', () => {
+    checkSession();
+    initApp();
     
-    // Mostrar mensaje si no hay totales
-    if (totalsList.children.length === 0) {
-        totalsList.innerHTML = '<p class="no-tickets">No hay propinas registradas</p>';
-    }
-}
-
-// Agregar función para borrar todos los datos (opcional)
-function clearAllData() {
-    if (confirm('¿Estás seguro de que deseas borrar todos los datos? Esta acción no se puede deshacer.')) {
-        tickets = [];
-        employees.forEach(employee => {
-            employeeTotals[employee] = 0;
-        });
-        saveToLocalStorage();
-        renderTickets();
-        renderTotals();
-    }
-}
-
-// Iniciar la aplicación cuando el DOM esté cargado
-document.addEventListener('DOMContentLoaded', initApp);
+    // Configurar verificación periódica de actualizaciones (cada 30 segundos)
+    setInterval(checkForUpdates, 30000);
+});
 
 // Add these functions at the end of your script.js file, before the DOMContentLoaded event
 
@@ -1017,6 +889,4 @@ async function updateEmployees(employees) {
     return null;
   }
 }
-
-// Then modify your existing functions to use these API functions
-// instead of localStorage operations
+                    
